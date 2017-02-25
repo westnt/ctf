@@ -51,8 +51,8 @@ def Solve(r):
 	goleft = True
 
 	#split list in half and get weight of left half
-	#if weight is divisable by 10, counter fit coin is amoung weighed coins
-	#else counterfit coin is in right half of list
+	#if weight is divisable by 10, counterfeit coin is amoung weighed coins
+	#else counterfeit coin is in right half of list
 	while( count < chances ):
 		if(cmin == cmax):
 			printf(idd+"found coin %d\n", cmin)
@@ -66,7 +66,7 @@ def Solve(r):
 		else:
 			cmin = cmid + 1
 		count += 1
-	#send the element of the counterfit coin to service
+	#send the element of the counterfeit coin to service
 	if(goleft):
 		r.send(str(cmin) + '\n')
 	else:
