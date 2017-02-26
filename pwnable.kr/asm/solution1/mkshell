@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+'''
+Author: Weston Silbaugh
+About: 	Adhoc Script for making simple shellcode from objdump output.
+
+Usage: 	objdump -d prog | mkshell -x start_address end_address
+'''
+
+import sys
+
+#convert input = "deadbeef" into input = "\xde\xad\xbe\xef"
+def stringify(inp):
+	out = ""
+
+	if(len(inp) < 2):
+		return ""
+
+	if(len(inp)==2):
+		return "\\x" + inp
+
+	for i in range(0,len(inp)-1):
+		if((i%2) == 0):
+			out += "\\x" + inp[i:i+2]
+	return out
+
+def main():
+	if(len(sys.argv) < 2):
+		print("Invalid Arguments")
+		print("Usage: 	objdump -d prog | mkshell -x start_address end_address")
+		exit(1)
+
+	ary = []
+	block = []
+	lbl = []
+	sec = []
+
+	#parse input and store into ary
+	inp = sys.stdin.read()
+	inp = inp.split('\n')
+	for line in inp:
+		line = line.split('\t')
+		for i in range(0,len(line)):
+			line[i] = line[i].replace(" ","")
+			if(i == 0):
+				line[i] = line[i].replace(":","")
+		if(line[0] != ""):
+			ary.append(line)
+
+	#parse ary into block, sec and lbl sections
+	info = ary[0]
+	ary = ary[1:]
+	for line in ary:
+		if len(line) == 1:
+			if(not line[0].find("Disassemblyofsection")):
+				line[0] = line[0].replace("Disassemblyofsection","")
+				line[0] = line[0].replace(".","")
+				sec.append(line)
+		elif len(line) == 3:
+			block.append(line)
+
+	#sort block by address
+	block = sorted(block, key=lambda l:l[0])
+
+	if(sys.argv[1] == "-x"):
+		i = 0
+		mina = sys.argv[2]
+		maxa = sys.argv[3]
+		pay = ""
+		while(i < len(block) and block[i][0] < mina):
+			i+=1
+		while(i < len(block) and block[i][0] <= maxa):
+			pay += block[i][1]
+			i+=1
+		
+		pay = stringify(pay)
+		print(pay)
+
+if __name__ == '__main__':
+	main()
