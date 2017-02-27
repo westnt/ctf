@@ -2,6 +2,8 @@
 
 Our goal is to get the asm binary to print our flag.
 
+the solution is in `run.py`
+
 We are provided with the source code for asm in asm.c.
 ```c
   1 #include <stdio.h>
